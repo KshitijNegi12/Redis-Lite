@@ -4,6 +4,7 @@ import (
 	"Redis/myConfig"
 	"Redis/server"
 	"fmt"
+	"log"
 	"net"
 	"os"
 	"strconv"
@@ -44,7 +45,7 @@ func main(){
 	if isThere {
 		port, err := strconv.Atoi(port)
 		if err != nil {
-			fmt.Println("Error Wrong Port Specified, ", err)
+			log.Println("Error Wrong Port Specified, ", err)
 			os.Exit(1)
 		}
 		config.Port = port
@@ -64,13 +65,13 @@ func main(){
 		config.MasterHost = parts[0]
 		port, err := strconv.Atoi(parts[1])
 		if err != nil {
-			fmt.Println("Error Wrong Port Specified of Master, ", err)
+			log.Println("Error Wrong Port Specified of Master, ", err)
 			os.Exit(1)
 		}
 		config.MasterPort = port
 		delete(config.Cargs, "replicaof")
 	}
 
-	// fmt.Println(config)
+	fmt.Println(config)
 	server.Start(config)
 }

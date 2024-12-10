@@ -4,21 +4,16 @@ import (
 	"Redis/implementation"
 	"Redis/myConfig"
 	"Redis/resp"
-	"net"
 	"strings"
+
+	// "fmt"
+	"net"
 )
 
-func RequestHandler(conn net.Conn, data []byte, config *myConfig.Config) [] string{
-	rawMsg := string(data)
-	splitMsg := strings.Split(rawMsg, "\r\n")
-	var interf []interface{}
-	for _, val := range splitMsg {
-		interf = append(interf, val)
-	} 
-
-	parsedCmds := resp.ParseMessage(interf)
-
-	cmd := parsedCmds.Cmd
+func RequestHandler(conn net.Conn, data []interface{}, config *myConfig.Config) [] string{
+	parsedCmds := resp.ParseMessage(data)
+	// fmt.Println(parsedCmds)
+	cmd := strings.ToUpper(parsedCmds.Cmd)
 	args := parsedCmds.Args
 
 	switch cmd {
@@ -30,10 +25,31 @@ func RequestHandler(conn net.Conn, data []byte, config *myConfig.Config) [] stri
 		
 		case "ECHO":
 			if len(args) > 0{
-				str,ok := args[0].(string)
-				if ok {
-					return implementation.HandleEcho(str)
-				}
+				return implementation.HandleEcho(args)
+			}
+			return resp.HandleErrors()
+
+		case "SET":
+			if len(args) == 2 || len(args) == 4{
+				return implementation.HandleSet(args)
+			}
+			return resp.HandleErrors()
+		
+		case "GET":
+			if len(args) == 1 {
+				return implementation.HandleGet(args)
+			}
+			return resp.HandleErrors()
+
+		case "REPLCONF":
+			if len(args) == 2{
+				return implementation.HandleReplconf()
+			}
+			return resp.HandleErrors()
+
+		case "PSYNC":
+			if len(args) == 2{
+				return implementation.HandlePsync(config)
 			}
 			return resp.HandleErrors()
 	}
