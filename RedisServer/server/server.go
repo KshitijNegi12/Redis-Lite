@@ -1,18 +1,30 @@
 package server
 
 import (
-	"Redis/myConfig"
 	"Redis/handler"
+	"Redis/myConfig"
 	"fmt"
+	"log"
 	"net"
 	"os"
+	"strings"
 )
+
+func GetSplitArray(data []byte) []interface{}{
+	rawMsg := string(data)
+	splitMsg := strings.Split(rawMsg, "\r\n")
+	var interf []interface{}
+	for _, val := range splitMsg {
+		interf = append(interf, val)
+	} 
+	return interf
+}
 
 func createServer(config *myConfig.Config){
 	listenAddr := fmt.Sprintf("%s:%v", config.Host, config.Port)
 	server, err := net.Listen("tcp", listenAddr)
 	if err != nil {
-		fmt.Println("Error when create Server, ",err)
+		log.Println("Error when creating Server, ",err)
 		os.Exit(1)
 	}
 	defer server.Close()
@@ -22,7 +34,7 @@ func createServer(config *myConfig.Config){
 	for {
 		conn, err := server.Accept()
 		if err != nil {
-			fmt.Println("Error accepting connection, ",err)
+			log.Println("Error accepting connection, ",err)
 			continue
 		}
 
@@ -44,16 +56,18 @@ func handleConnection(conn net.Conn, config *myConfig.Config){
 		bufLen, err := conn.Read(buf)
 		if err != nil {
 			if err.Error() == "EOF" {
-				fmt.Println("Client disconnected abruptly.", err)
+				log.Println("Client disconnected abruptly.")
 				break
 			} else {
-				fmt.Println("Socket error:", err)
+				log.Println("Socket error:", err)
 				break
 			}
 		}
 
 		data := buf[:bufLen]
-		dataToSendBack := handler.RequestHandler(conn, data, config)
+		interf := GetSplitArray(data)
+		fmt.Println(interf)
+		dataToSendBack := handler.RequestHandler(conn, interf, config)
 		for _, parts := range dataToSendBack {
 			conn.Write([]byte(fmt.Sprintf("%v", parts)))
 		}
@@ -68,5 +82,8 @@ func deleteConnFromServer(conn net.Conn, config *myConfig.Config) {
 }
 
 func Start(config *myConfig.Config){
+	if config.Role == "slave" {
+		go handShakeWithMaster(config)
+	}
 	createServer(config)
 }

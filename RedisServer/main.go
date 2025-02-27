@@ -3,33 +3,33 @@ package main
 import (
 	"Redis/myConfig"
 	"Redis/server"
-	"fmt"
+	"log"
 	"net"
 	"os"
 	"strconv"
 	"strings"
 )
 
-func main(){
+func main() {
 	config := &myConfig.Config{
-		Host:            "127.0.0.1",
-		Port:            6379,
-		Role:            "master",
-		Connections:     make(map[net.Conn]bool),
-		ConnectedSlaves: make(map[net.Conn]bool),
-		MasterReplID:    "8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb",
+		Host:             "127.0.0.1",
+		Port:             6379,
+		Role:             "master",
+		Connections:      make(map[net.Conn]bool),
+		ConnectedSlaves:  make(map[net.Conn]bool),
+		MasterReplID:     "8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb",
 		MasterReplOffset: 0,
 		AckCount:         0,
 		AckNeeded:        0,
 		PropagationCount: 0,
 		WaitingForAck:    false,
-		Cargs:            make(map[string]string),	 
-		MasterHost: 	  "",
-		MasterPort: 	  0,
+		Cargs:            make(map[string]string),
+		MasterHost:       "",
+		MasterPort:       0,
 	}
 
 	args := os.Args[1:]
-	for i:= 0; i<len(args); i++ {
+	for i := 0; i < len(args); i++ {
 		arg := args[i]
 		if strings.HasPrefix(arg, "--") {
 			key := strings.TrimPrefix(arg, "--")
@@ -44,7 +44,7 @@ func main(){
 	if isThere {
 		port, err := strconv.Atoi(port)
 		if err != nil {
-			fmt.Println("Error Wrong Port Specified, ", err)
+			log.Println("Error Wrong Port Specified, ", err)
 			os.Exit(1)
 		}
 		config.Port = port
@@ -64,13 +64,12 @@ func main(){
 		config.MasterHost = parts[0]
 		port, err := strconv.Atoi(parts[1])
 		if err != nil {
-			fmt.Println("Error Wrong Port Specified of Master, ", err)
+			log.Println("Error Wrong Port Specified of Master, ", err)
 			os.Exit(1)
 		}
 		config.MasterPort = port
 		delete(config.Cargs, "replicaof")
 	}
 
-	// fmt.Println(config)
 	server.Start(config)
 }
