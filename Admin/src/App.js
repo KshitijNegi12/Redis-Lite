@@ -3,7 +3,7 @@ import "./App.css";
 
 const App = () => {
     const [input, setInput] = useState("");
-    const [output, setOutput] = useState([]);
+    const [output, setOutput] = useState([]); // [{ timestamp, command, response }]
     const [isConnected, setIsConnected] = useState(false);
     const [isConnecting, setIsConnecting] = useState(true);
     const [error, setError] = useState(null);
@@ -31,12 +31,33 @@ const App = () => {
                     if (data.type === "error") {
                         setError(data.message);
                     } else if (data.type === "response") {
-                        setOutput((prev) => [...prev, { message: data.message, timestamp }]);
+                        setOutput((prev) => {
+                            const updated = [...prev];
+                            const last = updated.pop();
+                            if (last && last.response === null) {
+                                updated.push({ ...last, response: data.message });
+                            } else {
+                                updated.push(last);
+                                updated.push({ timestamp, command: null, response: data.message });
+                            }
+                            return updated;
+                        });
                     } else {
-                        setOutput((prev) => [...prev, { message: JSON.stringify(data), timestamp }]);
+                        setOutput((prev) => [...prev, { timestamp, command: null, response: JSON.stringify(data) }]);
                     }
                 } catch {
-                    setOutput((prev) => [...prev, { message: event.data, timestamp }]);
+                    // Handle raw message
+                    setOutput((prev) => {
+                        const updated = [...prev];
+                        const last = updated.pop();
+                        if (last && last.response === null) {
+                            updated.push({ ...last, response: event.data });
+                        } else {
+                            updated.push(last);
+                            updated.push({ timestamp, command: null, response: event.data });
+                        }
+                        return updated;
+                    });
                 }
             };
 
@@ -84,7 +105,7 @@ const App = () => {
 
             socketRef.current.send(JSON.stringify({ type: "data", data: input }));
             const timestamp = new Date().toLocaleTimeString();
-            setOutput((prev) => [...prev, { message: input, timestamp }]);
+            setOutput((prev) => [...prev, { timestamp, command: input, response: null }]);
             setInput("");
             setError(null);
         }
@@ -101,7 +122,9 @@ const App = () => {
     };
 
     const handleCopyOutput = () => {
-        const textToCopy = output.map((item) => `[${item.timestamp}] ${item.message}`).join("\n");
+        const textToCopy = output.map(
+            (item) => `${item.timestamp}${item.command ? ` > ${item.command}` : ""}\n${item.response ?? ""}`
+        ).join("\n\n");
         navigator.clipboard.writeText(textToCopy);
     };
 
@@ -191,8 +214,13 @@ const App = () => {
                         {output.length > 0 ? (
                             output.map((item, index) => (
                                 <div key={index} className="output-message">
-                                    <span className="timestamp">[{item.timestamp}]</span>
-                                    <pre>{formatMessage(item.message)}</pre>
+                                    {item.command && (
+                                        <span className="timestamp">
+                                            {item.timestamp} &gt; 
+                                        </span>
+                                    )}
+                                    <span>{item.command}</span>
+                                    {item.response && <pre>{formatMessage(item.response)}</pre>}
                                 </div>
                             ))
                         ) : (
