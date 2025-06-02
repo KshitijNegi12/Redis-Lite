@@ -9,6 +9,8 @@ const App = () => {
     const [error, setError] = useState(null);
     const socketRef = useRef(null);
     const outputEndRef = useRef(null);
+    const [redisPort, setRedisPort] = useState("6379");
+    const [hasSentInitial, setHasSentInitial] = useState(false);
 
     useEffect(() => {
         const connectWebSocket = () => {
@@ -19,11 +21,23 @@ const App = () => {
                 setIsConnected(true);
                 setIsConnecting(false);
                 setError(null);
+                setHasSentInitial(false);
             };
 
             ws.onmessage = (event) => {
                 const timestamp = new Date().toLocaleTimeString();
-                setOutput((prev) => [...prev, { message: event.data, timestamp }]);
+                try {
+                    const data = JSON.parse(event.data);
+                    if (data.type === "error") {
+                        setError(data.message);
+                    } else if (data.type === "response") {
+                        setOutput((prev) => [...prev, { message: data.message, timestamp }]);
+                    } else {
+                        setOutput((prev) => [...prev, { message: JSON.stringify(data), timestamp }]);
+                    }
+                } catch {
+                    setOutput((prev) => [...prev, { message: event.data, timestamp }]);
+                }
             };
 
             ws.onerror = (event) => {
@@ -63,7 +77,12 @@ const App = () => {
             return;
         }
         if (socketRef.current) {
-            socketRef.current.send(input);
+            if (!hasSentInitial) {
+                socketRef.current.send(JSON.stringify({ type: "init", port: redisPort }));
+                setHasSentInitial(true);
+            }
+
+            socketRef.current.send(JSON.stringify({ type: "data", data: input }));
             const timestamp = new Date().toLocaleTimeString();
             setOutput((prev) => [...prev, { message: input, timestamp }]);
             setInput("");
@@ -109,6 +128,18 @@ const App = () => {
         <div className="app-container">
             <div className="header">
                 <h1>REDIS LITE ADMIN PANEL</h1>
+                <div className="port-config">
+                    <label htmlFor="port">Redis Port:</label>
+                    <input
+                        id="port"
+                        type="number"
+                        value={redisPort}
+                        onChange={(e) => setRedisPort(e.target.value)}
+                        className="port-input"
+                        placeholder="6379"
+                    />
+                </div>
+
                 <div className="connection-info">
                     {isConnecting ? (
                         <div className="connection-status connecting">
