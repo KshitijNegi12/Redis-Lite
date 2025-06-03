@@ -1,6 +1,7 @@
 package implementation
 
 import (
+	"Redis/myConfig"
 	"Redis/resp"
 	"Redis/store"
 	"errors"
@@ -10,11 +11,11 @@ import (
 	"time"
 )
 
-func HandlePing() []string{
+func HandlePing() []string {
 	return resp.ToSimpleString("PONG")
 }
 
-func HandleEcho(args []interface{}) []string{
+func HandleEcho(args []interface{}) []string {
 	var str string
 	for _, item := range args {
 		str += fmt.Sprintf("%v ", item)
@@ -22,7 +23,7 @@ func HandleEcho(args []interface{}) []string{
 	return resp.ToSimpleString(str)
 }
 
-func HandleSet(args []interface{}) []string{
+func HandleSet(args []interface{}, config *myConfig.Config) []string {
 	key := args[0]
 	value := args[1]
 	delete(store.ExpiryKeys, key)
@@ -33,16 +34,21 @@ func HandleSet(args []interface{}) []string{
 		}
 	}
 	store.StoredKeys[key] = value
-	return resp.ToSimpleString("OK")
+	if config.Role == "master" {
+		data := []interface{}{"SET", key, value}
+		sendPropogationToReplicas(resp.ToRESP(data), config)
+		return resp.ToSimpleString("OK")
+	}
+	return resp.ToSimpleString("")
 }
 
-func handleKeyExpiry(args []interface{},  key interface{}) error{
+func handleKeyExpiry(args []interface{}, key interface{}) error {
 	typeExpiry, ok := args[2].(string)
 	if !ok {
 		return errors.New("invalid type")
 	}
 	typeExpiry = strings.ToUpper(typeExpiry)
-	
+
 	timeExpiry, err := parseInt(args[3])
 	if err != nil {
 		return err
@@ -55,11 +61,11 @@ func handleKeyExpiry(args []interface{},  key interface{}) error{
 	} else if typeExpiry == "EX" {
 		duration := time.Duration(timeExpiry) * time.Second
 		expiryTime = time.Now().Add(duration)
-	} else{
+	} else {
 		return errors.New("invalid type")
 	}
 
-	store.ExpiryKeys[key] =  expiryTime
+	store.ExpiryKeys[key] = expiryTime
 	return nil
 }
 
@@ -71,37 +77,37 @@ func parseInt(str interface{}) (int, error) {
 	return -1, errors.New("invalid type")
 }
 
-func HandleGet(args []interface{}) []string{
+func HandleGet(args []interface{}) []string {
 	key := args[0]
 	var val interface{}
 	var exist bool
 	if val, exist = store.StoredKeys[key]; exist {
-		currTime := time.Now()   
-        expTime, hasExpiry := store.ExpiryKeys[key]
+		currTime := time.Now()
+		expTime, hasExpiry := store.ExpiryKeys[key]
 		value := convertToString(val)
-        if !hasExpiry || currTime.Before(expTime) {
-            return resp.ToSimpleString(value)
-        } else {
-            return resp.ToNullBulkString()  
-        }
-    } else {
-        return resp.ToNullBulkString()   
-    }
+		if !hasExpiry || currTime.Before(expTime) {
+			return resp.ToSimpleString(value)
+		} else {
+			return resp.ToNullBulkString()
+		}
+	} else {
+		return resp.ToNullBulkString()
+	}
 }
 
 func convertToString(val interface{}) string {
-    switch v := val.(type) {
-    case string:
-        return v
-    case int:
-        return fmt.Sprintf("%d", v)
-    default:
-        log.Println("Unexpected value type, returning empty string")
-        return ""
-    }
+	switch v := val.(type) {
+	case string:
+		return v
+	case int:
+		return fmt.Sprintf("%d", v)
+	default:
+		log.Println("Unexpected value type, returning empty string")
+		return ""
+	}
 }
 
-func HandleDel(args []interface{}) []string{
+func HandleDel(args []interface{}) []string {
 	key := args[0]
 	var exist bool
 	if _, exist = store.StoredKeys[key]; exist {
@@ -110,7 +116,18 @@ func HandleDel(args []interface{}) []string{
 			delete(store.ExpiryKeys, key)
 		}
 		return resp.ToSimpleString("1")
-    } else {
-        return resp.ToNullBulkString()   
-    }
+	} else {
+		return resp.ToNullBulkString()
+	}
+}
+
+func sendPropogationToReplicas(data string, config *myConfig.Config) {
+	for conn := range config.ConnectedSlaves {
+		if conn != nil {
+			_, err := conn.Write([]byte(data))
+			if err != nil {
+				continue
+			}
+		}
+	}
 }

@@ -4,13 +4,19 @@ import (
 	"Redis/implementation"
 	"Redis/myConfig"
 	"Redis/resp"
-	"strings"
+	"Redis/store"
+	"fmt"
 	"net"
+	"strings"
 )
 
 func RequestHandler(conn net.Conn, data []interface{}, config *myConfig.Config) [] string{
 	parsedCmds := resp.ParseMessage(data)
 	cmd := strings.ToUpper(parsedCmds.Cmd)
+	if _, exists := store.MultiQueue[conn]; exists && cmd != "EXEC" && cmd != "DISCARD" {
+		store.AddConnCmdsToQueue(conn, data)
+		return resp.ToSimpleString("Queued")
+	} 
 	args := parsedCmds.Args
 
 	switch cmd {
@@ -28,7 +34,7 @@ func RequestHandler(conn net.Conn, data []interface{}, config *myConfig.Config) 
 
 		case "SET":
 			if len(args) == 2 || len(args) == 4{
-				return implementation.HandleSet(args)
+				return implementation.HandleSet(args, config)
 			}
 			return resp.HandleErrors()
 		
@@ -58,10 +64,58 @@ func RequestHandler(conn net.Conn, data []interface{}, config *myConfig.Config) 
 
 		case "PSYNC":
 			if len(args) == 2{
-				return implementation.HandlePsync(config)
+				return implementation.HandlePsync(conn, config)
 			}
 			return resp.HandleErrors()
-	}
+		
+		case "TYPE":
+			if len(args) == 1{
+				return implementation.HandleType(args)
+			}
+			return resp.HandleErrors()
 
-	return resp.HandleErrors()
+		case "INCR":
+			if len(args) == 1{
+				return implementation.HandleIncr(args)
+			}
+			return resp.HandleErrors()
+
+		case "MULTI":
+			if len(args) == 0{
+				return implementation.HandleMulti(conn)
+			}
+			return resp.HandleErrors()
+
+		case "EXEC":
+			if !store.CheckConnInQueue(conn){
+				return resp.ToSimpleError("ERR EXEC without MULTI")
+			}
+
+			commands := store.GetQueuedCmds(conn)
+			fmt.Println(commands)
+			for _, cmd := range commands {
+				iCmd, ok := cmd.([]interface{})
+				if !ok {
+					conn.Write([]byte(fmt.Sprintf("%v", "Invalid command format")))
+					continue
+				}
+				fmt.Println("cmd: ",iCmd)
+				data := RequestHandler(conn, iCmd, config)
+				fmt.Println("data: ",data)
+				for _, parts := range data {
+					conn.Write([]byte(fmt.Sprintf("%v", parts)))
+				}
+			}
+			return resp.ToSimpleString("Done")
+
+		case "DISCARD":
+			if len(args) == 0{
+				return implementation.HandleDiscard(conn)
+			}
+			return resp.HandleErrors()
+		
+		default:
+			return resp.HandleErrors()
+
+	}
 }
