@@ -4,6 +4,7 @@ import (
 	"Redis/myConfig"
 	"Redis/resp"
 	"strings"
+	"net"
 )
 
 func HandleInfo(args []interface{}, config *myConfig.Config) []string {
@@ -22,6 +23,7 @@ func HandleReplconf() []string {
 	return  resp.ToSimpleString("OK")
 }
 
-func HandlePsync(config *myConfig.Config) []string {
+func HandlePsync(conn net.Conn, config *myConfig.Config) []string {
+	config.ConnectedSlaves[conn] = true
 	return []string {resp.ToRESP([]interface{}{"FULLRESYNC", config.MasterReplID, config.MasterReplOffset}) }
 }

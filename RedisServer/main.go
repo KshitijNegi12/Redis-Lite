@@ -60,7 +60,7 @@ func main() {
 	masterInfo, isThere := config.Cargs["replicaof"]
 	if isThere {
 		config.Role = "slave"
-		parts := strings.Split(masterInfo, " ")
+		parts := strings.Split(masterInfo, ":")
 		config.MasterHost = parts[0]
 		port, err := strconv.Atoi(parts[1])
 		if err != nil {

@@ -1,6 +1,7 @@
 package server
 
 import (
+	"Redis/handler"
 	"Redis/myConfig"
 	"Redis/resp"
 	"fmt"
@@ -40,25 +41,24 @@ func handShakeWithMaster(config *myConfig.Config) {
 			fmt.Println(response)
 			cmd := response.Cmd
 
-			switch cmd {
-				case "PONG":
-					_, err = connWithMaster.Write([]byte(resp.ToRESP([]interface{}{"REPLCONF", "listening-port", config.Port})))
+			if cmd == "PONG" {
+				_, err = connWithMaster.Write([]byte(resp.ToRESP([]interface{}{"REPLCONF", "listening-port", config.Port})))
 
-				case "OK":
-					if toSendCapa {
-						_, err = connWithMaster.Write([]byte(resp.ToRESP([]interface{}{"REPLCONF", "capa", "psync2"})))
-						toSendCapa = false
-					} else {
-						_, err = connWithMaster.Write([]byte(resp.ToRESP([]interface{}{"PSYNC", "?", -1})))
-					}
-				
-				case "FULLRESYNC":
-					if len(response.Args) == 2 {
-						config.MasterReplID = response.Args[0].(string)
-					} 
-					
-				default:
-					log.Println("Unknown command received:", cmd)
+			} else if cmd == "OK" {
+				if toSendCapa {
+					_, err = connWithMaster.Write([]byte(resp.ToRESP([]interface{}{"REPLCONF", "capa", "psync2"})))
+					toSendCapa = false
+				} else {
+					_, err = connWithMaster.Write([]byte(resp.ToRESP([]interface{}{"PSYNC", "?", -1})))
+				}
+
+			} else if cmd == "FULLRESYNC" {
+				if len(response.Args) == 2 {
+					config.MasterReplID = response.Args[0].(string)
+				}
+
+			} else {
+				handler.RequestHandler(connWithMaster, splitData, config)
 			}
 
 			if err != nil {

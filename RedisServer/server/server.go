@@ -48,7 +48,7 @@ func handleConnection(conn net.Conn, config *myConfig.Config){
 
 	if config.Role == "master" {
 		config.Connections[conn] = true
-	}
+	} 
 
 	buf := make([]byte, 1024)
 
