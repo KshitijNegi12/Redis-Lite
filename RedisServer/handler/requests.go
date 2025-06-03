@@ -74,6 +74,18 @@ func RequestHandler(conn net.Conn, data []interface{}, config *myConfig.Config) 
 			}
 			return resp.HandleErrors()
 
+		case "XADD":
+			if len(args) >= 4 && len(args) % 2 == 0{
+				return implementation.HandleXadd(args)
+			}
+			return resp.HandleErrors()
+		
+		case "XREAD":
+			if len(args) == 3 {
+				return implementation.HandleXread(args)
+			}
+			return resp.HandleErrors()
+
 		case "INCR":
 			if len(args) == 1{
 				return implementation.HandleIncr(args)
