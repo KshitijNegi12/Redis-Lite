@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"path"
 	"strings"
 	"time"
 )
@@ -130,4 +131,27 @@ func sendPropogationToReplicas(data string, config *myConfig.Config) {
 			}
 		}
 	}
+}
+
+func HandleKeys(args []interface{}) []string {
+	pattern := fmt.Sprintf("%v", args[0])
+
+	matchingKeys := make([]interface{}, 0)
+	currTime := time.Now()
+
+	for k := range store.StoredKeys {
+		keyStr := convertToString(k)
+
+		match, _ := path.Match(pattern, keyStr)
+		if !match {
+			continue
+		}
+
+		expTime, hasExpiry := store.ExpiryKeys[k]
+		if !hasExpiry || currTime.Before(expTime) {
+			matchingKeys = append(matchingKeys, keyStr)
+		}
+	}
+
+	return []string{resp.ToRESP(matchingKeys)}
 }

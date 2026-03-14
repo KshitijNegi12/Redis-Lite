@@ -25,14 +25,14 @@ func CheckForKeys(key interface{}) bool {
 			return false
 		}
 
-		currTime := time.Now()   
-        expTime, hasExpiry := store.ExpiryKeys[key]
-        if !hasExpiry || currTime.Before(expTime) {
-            store.StoredKeys[key] = numVal + 1
-        } else {
-            delete(store.ExpiryKeys, key)
+		currTime := time.Now()
+		expTime, hasExpiry := store.ExpiryKeys[key]
+		if !hasExpiry || currTime.Before(expTime) {
+			store.StoredKeys[key] = numVal + 1
+		} else {
+			delete(store.ExpiryKeys, key)
 			store.StoredKeys[key] = 1
-        }
+		}
 
 		return true
 	}

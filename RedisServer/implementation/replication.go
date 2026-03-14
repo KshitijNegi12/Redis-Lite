@@ -3,8 +3,8 @@ package implementation
 import (
 	"Redis/myConfig"
 	"Redis/resp"
-	"strings"
 	"net"
+	"strings"
 )
 
 func HandleInfo(args []interface{}, config *myConfig.Config) []string {
@@ -13,17 +13,17 @@ func HandleInfo(args []interface{}, config *myConfig.Config) []string {
 		return resp.HandleErrors()
 	}
 	arg = strings.ToLower(arg)
-	if(arg == "replication"){
+	if arg == "replication" {
 		return resp.ToSimpleString(config.Role)
 	}
 	return resp.HandleErrors()
 }
 
 func HandleReplconf() []string {
-	return  resp.ToSimpleString("OK")
+	return resp.ToSimpleString("OK")
 }
 
 func HandlePsync(conn net.Conn, config *myConfig.Config) []string {
 	config.ConnectedSlaves[conn] = true
-	return []string {resp.ToRESP([]interface{}{"FULLRESYNC", config.MasterReplID, config.MasterReplOffset}) }
+	return []string{resp.ToRESP([]interface{}{"FULLRESYNC", config.MasterReplID, config.MasterReplOffset})}
 }

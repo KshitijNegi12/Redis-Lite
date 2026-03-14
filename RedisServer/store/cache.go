@@ -13,7 +13,7 @@ var Streams = make(map[string]map[string]map[interface{}]interface{})
 func AddConnToMultiQueue(conn net.Conn) bool {
 	if _, exists := MultiQueue[conn]; exists {
 		return false
-	} 
+	}
 	MultiQueue[conn] = []interface{}{}
 	return true
 }
@@ -32,9 +32,9 @@ func DiscardQueueCmds(conn net.Conn) {
 	delete(MultiQueue, conn)
 }
 
-func CheckConnInQueue(conn net.Conn) bool{
+func CheckConnInQueue(conn net.Conn) bool {
 	if _, exists := MultiQueue[conn]; exists {
 		return true
-	} 
+	}
 	return false
 }

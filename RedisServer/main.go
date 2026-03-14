@@ -39,7 +39,7 @@ func main() {
 			}
 		}
 	}
-	
+
 	port, isThere := config.Cargs["port"]
 	if isThere {
 		port, err := strconv.Atoi(port)

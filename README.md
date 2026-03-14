@@ -38,6 +38,7 @@ This project implements core Redis functionality, including standard data manipu
 | **`GET`**      | Get the value of `key`. Returns nil if the key does not exist or has expired.                                               |
 | **`DEL`**      | Deletes the specified `key`.                                                                                                |
 | **`INFO`**     | Returns server information and statistics (useful for replication info).                                                    |
+| **`KEYS`**     | Returns all keys matching `pattern`. Example: `KEYS *` or `KEYS mykey?`                                                     |
 | **`REPLCONF`** | Used by replicas to configure the replication process.                                                                      |
 | **`PSYNC`**    | Used by replicas to synchronize with the master.                                                                            |
 | **`TYPE`**     | Returns the type of the value stored at `key`.                                                                              |
