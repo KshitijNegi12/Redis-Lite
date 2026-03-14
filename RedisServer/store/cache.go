@@ -8,6 +8,7 @@ import (
 var StoredKeys = make(map[interface{}]interface{})
 var ExpiryKeys = make(map[interface{}]time.Time)
 var MultiQueue = make(map[net.Conn][]interface{})
+var Streams = make(map[string]map[string]map[interface{}]interface{})
 
 func AddConnToMultiQueue(conn net.Conn) bool {
 	if _, exists := MultiQueue[conn]; exists {
